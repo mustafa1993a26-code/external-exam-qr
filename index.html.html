@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>قارئ QR - القسم المهني الأول في الرصافة</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f7fb;color:#172033}.wrap{max-width:520px;margin:auto;padding:18px}.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.12)}h1{font-size:21px;text-align:center;margin:0 0 8px}.hint{text-align:center;color:#596273;line-height:1.7;margin-bottom:14px}#reader{width:100%;overflow:hidden;border-radius:14px;background:#111;min-height:280px}.msg{margin-top:12px;padding:10px;border-radius:10px;text-align:center;font-weight:700}.ok{background:#e8f5e9;color:#176b2c}.err{background:#ffebee;color:#a61b29}button{width:100%;margin-top:12px;border:0;border-radius:12px;padding:13px;font-weight:700;cursor:pointer}.secondary{background:#e9eef6;color:#172033}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1>قراءة QR للمتقدم</h1>
+<div class="hint">وجّه الكاميرا نحو رمز QR الموجود في استمارة الطالب. بعد القراءة سيُفتح الطلب تلقائياً في صفحة الموظفين.</div>
+<div id="reader"></div>
+<div id="message" class="msg" style="display:none"></div>
+<button class="secondary" onclick="startScanner()">إعادة تشغيل الكاميرا</button>
+</div></div>
+<script>
+let scanner=null,busy=false;
+function msg(t,err){const e=document.getElementById('message');e.style.display='block';e.className='msg '+(err?'err':'ok');e.textContent=t}
+function normalize(v){const s=String(v||'').trim().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));const m=s.match(/\b20\d{2}-\d{6}\b/);return m?m[0]:s}
+async function stop(){if(!scanner)return;const x=scanner;scanner=null;try{await x.stop()}catch(e){}try{x.clear()}catch(e){}}
+async function startScanner(){busy=false;await stop();document.getElementById('reader').innerHTML='';if(typeof Html5Qrcode==='undefined'){msg('تعذر تحميل مكتبة QR. تحقق من الإنترنت.',true);return}scanner=new Html5Qrcode('reader');const cfg={fps:10,qrbox:(w,h)=>{const n=Math.floor(Math.min(w,h)*.72);return{width:n,height:n}},disableFlip:false};try{await scanner.start({facingMode:'environment'},cfg,onScan,()=>{})}catch(e){try{await scanner.start({facingMode:'user'},cfg,onScan,()=>{})}catch(e2){msg('تعذر تشغيل الكاميرا. تأكد من السماح بالكاميرا لهذا الموقع ثم أعد المحاولة.',true)}}}
+async function onScan(text){if(busy)return;const n=normalize(text);if(!/^20\d{2}-\d{6}$/.test(n))return;busy=true;msg('تمت القراءة: '+n,false);await stop();try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:'EXTERNAL_QR_RESULT',value:n},'*');setTimeout(()=>window.close(),250);return}}catch(e){}msg('تمت القراءة: '+n+' — ارجع إلى صفحة الموظفين.',false)}
+window.addEventListener('load',startScanner);window.addEventListener('beforeunload',stop);
+</script>
+</body>
+</html>
